@@ -8,11 +8,11 @@ const PluginError = gutil.PluginError // 错误提示
 const PLUGIN_NAME = 'gulp-tinypng-with-cache' // 插件名
 
 let AUTH_TOKEN = '' // 根据 aypi key 生成的请求头，
-let _recordFilePath = '' // 日志文件路径
 let _cacheFilePath = '' // 缓存信息所在路径
+let _recordFilePath = '' // 日志文件路径
+let _apiKeyList = [] // key 列表
 let recordList = [] // 压缩日志列表
 let cacheObj = {}  // 压缩日志文件，记录每个文件是否被压缩过，且其压缩后的体积是多少。如果比记录值大，则进行压缩
-let keyList = [] // key 列表
 let keyIndex = 0 // 当前使用第几个 Key
 
 let compressionInfo = {
@@ -37,11 +37,11 @@ function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath }) {
     throw new PluginError(PLUGIN_NAME, 'tinypny key 列表不能为空!')
   }
 
-  keyList = apiKeyList
+  _apiKeyList = apiKeyList
   _cacheFilePath = cacheFilePath
   _recordFilePath = recordFilePath
-  AUTH_TOKEN = Buffer.from('api:' + keyList[keyIndex]).toString('base64')
-  gutil.log(`当前使用第一个 apiKey:  ${keyList[keyIndex]}`)
+  AUTH_TOKEN = Buffer.from('api:' + _apiKeyList[keyIndex]).toString('base64')
+  gutil.log(`当前使用第一个 apiKey:  ${_apiKeyList[keyIndex]}`)
   try {
     cacheObj = JSON.parse(fs.readFileSync(_cacheFilePath) || '{}')
   } catch (e) {
@@ -84,16 +84,16 @@ function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath }) {
 }
 
 // 检测 key 文件，使用下一个 key
-function checkKey (errorMsg, cb) {
+function checkApiKey (errorMsg, cb) {
   const matchError = [  // 匹配的错误信息
     'Credentials are invalid.', // apiKey 无效
     'Your monthly limit has been exceeded', // 已超本月免费的 500 张限制
   ]
   if (matchError.indexOf(errorMsg) > -1) {
-    if (keyIndex < keyList.length - 1) {
+    if (keyIndex < _apiKeyList.length - 1) {
       keyIndex++
-      gutil.log(`apiKey 已超使用限制，切换使用第 ${keyIndex + 1} 个 apiKey: ${keyList[keyIndex]}`)
-      AUTH_TOKEN = Buffer.from('api:' + keyList[keyIndex]).toString('base64') // 使用下一个 key
+      gutil.log(`apiKey 已超使用限制，切换使用第 ${keyIndex + 1} 个 apiKey: ${_apiKeyList[keyIndex]}`)
+      AUTH_TOKEN = Buffer.from('api:' + _apiKeyList[keyIndex]).toString('base64') // 使用下一个 key
       cb() // 重试压缩
     } else {
       gutil.log('提供的 apiKey 已均不可用，压缩结束')
@@ -138,7 +138,7 @@ function tinypng (file, cb) {
         })
       } else {
         // 检测 key 无效的错误码，从 key 列表中使用下一个 key
-        checkKey(results.message, tinypng.bind(null, file, cb))
+        checkApiKey(results.message, tinypng.bind(null, file, cb))
       }
     } else {
       recordResult()
