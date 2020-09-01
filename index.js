@@ -1,14 +1,15 @@
 const fs = require('fs')
+const md5 = require('md5');
 const gutil = require('gulp-util')
 const request = require('request')
 const through = require('through2')
 const prettyBytes = require('pretty-bytes')
 const PluginError = gutil.PluginError // 错误提示
-const TEMP_DIR = '.gulp/tinypng/' // 临时存储文件的路径
 const PLUGIN_NAME = 'gulp-tinypng-with-cache' // 插件名
+
 let AUTH_TOKEN = '' // 根据 aypi key 生成的请求头，
-let cacheObj = ''  // 压缩日志文件，记录每个文件是否被压缩过，且其压缩后的体积是多少。如果比记录值大，则进行压缩
-let cacheInfoPath = __dirname + '/cacheObj.json'
+let cacheInfoPath = '' // 缓存信息所在路径
+let cacheObj = {}  // 压缩日志文件，记录每个文件是否被压缩过，且其压缩后的体积是多少。如果比记录值大，则进行压缩
 let keyList = [] // key 列表
 let keyIndex = 0 // 当前使用第几个 Key
 let compressionInfo = {
@@ -25,41 +26,47 @@ function recordResult () {
 }
 
 // 主函数
-function gulpMain ({ apiKeyList = [], cached = true }) {
-  keyIndex = 0
-  compressionInfo = {
-    num: 0, // 压缩的文件数
-    saveSize: 0, // 节省的体积
-    originSize: 0, // 文件未被压缩前总体积
-    savePercent: 0, // 压缩百分比
+function gulpMain ({ apiKeyList = [], cached = true, cacheFilePath = __dirname + '/cacheObj.json' }) {
+  if (!apiKeyList.length) {
+    throw new PluginError(PLUGIN_NAME, 'tinypny key 列表不能为空!')
+  }
+  if (!cacheFilePath.trim()) {
+    throw new PluginError(PLUGIN_NAME, 'cacheFilePath 不能为空，默认值为 __dirname + \'/cacheObj.json\'')
   }
 
   keyList = apiKeyList
-  if (!apiKeyList.length) {
-    throw new PluginError(PLUGIN_NAME, 'tinypny key 列表不能为空!')
-  } else {
-    AUTH_TOKEN = Buffer.from('api:' + apiKeyList[keyIndex]).toString('base64')
+  cacheInfoPath = cacheFilePath
+  AUTH_TOKEN = Buffer.from('api:' + apiKeyList[keyIndex]).toString('base64')
+  try {
+    cacheObj = JSON.parse(fs.readFileSync(cacheInfoPath) || '{}')
+  } catch (e) {
+
   }
 
   // gulp 进入的主流程
-  cacheObj = JSON.parse(fs.readFileSync(cacheInfoPath) || '{}')
   return through.obj(function (file, enc, callback) {
     if (file.isStream()) {
       throw new PluginError(PLUGIN_NAME, 'Stream is not supported')
-    } else if (file.isNull() || cached && cacheObj[file.relative] <= file.contents.length) { // 目标文件在缓存中存在，且不大于记录的体积
+    } else if (file.isNull()) {
       this.push(file)
       return callback()
     } else if (file.isBuffer()) { // 正常处理的类型
-      let prevLength = file.contents.length // 压缩前的大小
-      // return callback()
-      tinypng(file, (data) => {
+      // 目标文件在缓存中存在，且内容未发生变化
+      if (cached && cacheObj[file.relative] === md5(file.contents)) {
         this.push(file)
+        return callback()
+      }
+
+      // 不命中缓存，进行压缩
+      let prevSize = file.contents.length // 压缩前的大小
+      tinypng(file, (data) => {
         file.contents = data
         compressionInfo.num++
-        compressionInfo.saveSize += prevLength - data.length
-        compressionInfo.originSize += prevLength
-        cacheObj[file.relative] = data.length // 记录到缓存中
-        gutil.log(`压缩成功：${file.relative} 【${prettyBytes(prevLength - data.length)}】【${((1 - data.length / prevLength) * 100).toFixed(0)}%】`)
+        compressionInfo.saveSize += prevSize - data.length
+        compressionInfo.originSize += prevSize
+        cacheObj[file.relative] = md5(data) // 记录到缓存中
+        gutil.log(`压缩成功：${file.relative} 【${prettyBytes(prevSize - data.length)}】【${((1 - data.length / prevSize) * 100).toFixed(0)}%】`)
+        this.push(file)
         return callback()
       })
     }
@@ -72,10 +79,12 @@ function gulpMain ({ apiKeyList = [], cached = true }) {
 // 检测 key 文件，使用下一个 key
 function checkKey (errorMsg, cb) {
   const matchError = [  // 匹配的错误信息
-    'Credentials are invalid.'
+    'Credentials are invalid.', // apiKey 无效
+    'Your monthly limit has been exceeded', // 已超本月免费的 500 张限制
   ]
   if (keyIndex < keyList.length && matchError.indexOf(errorMsg) > -1) {
     keyIndex++
+    gutil.log(`apiKey 出错，切换使用第 ${keyIndex + 1} 个 apiKey：${keyList[keyIndex]}`)
     AUTH_TOKEN = Buffer.from('api:' + keyList[keyIndex]).toString('base64') // 使用下一个 key
     cb() // 重试压缩
   } else {
@@ -102,21 +111,14 @@ function tinypng (file, cb) {
       const results = JSON.parse(body)
       if (results.output && results.output.url) { // 获得实际下载的地址
         request.head(results.output.url, function (error) { // 通过head 请求，提前请求，确保资源存在
-          const filePathName = TEMP_DIR + new Date().getTime()
           if (!error) {
             request({
+              headers: { 'Content-Type': 'application/octet-stream' },
               strictSSL: false,
+              encoding: null, // 获取二进制数据，必须设置该值
               url: results.output.url,
-            })
-            .pipe(fs.createWriteStream(filePathName))
-            .on('data', function(data) {
-              // decompressed data as it is received
-              console.log('decoded chunk: ' + data)
-            })
-            .on('close', () => {
-              fs.readFile(filePathName, function (err, data) {
-                cb(data)
-              })
+            }, function (error, response, body) {
+              cb(body)
             })
           } else {
             recordResult()
@@ -124,7 +126,8 @@ function tinypng (file, cb) {
           }
         })
       } else {
-        checkKey(results.message, tinypng.bind(null, file, cb)) // 检测 key 无效的错误码
+        // 检测 key 无效的错误码，从 key 列表中使用下一个 key
+        checkKey(results.message, tinypng.bind(null, file, cb))
       }
     } else {
       recordResult()
