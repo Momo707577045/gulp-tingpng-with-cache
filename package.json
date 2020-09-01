@@ -1,0 +1,33 @@
+{
+  "name": "gulp-tinypng-with-cache",
+  "version": "1.0.0",
+  "description": "带缓存的 tinypng gulp 插件",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "gulpplugin",
+    "tinypng",
+    "image",
+    "img",
+    "picture",
+    "minify",
+    "minifier",
+    "compress",
+    "png"
+  ],
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "event-stream": "~3.1.0",
+    "gulp": "^4.0.2",
+    "gulp-util": "^2.2.20",
+    "pretty-bytes": "^0.1.2",
+    "request": "^2.31.0",
+    "through2": "^0.4.2",
+    "vinyl": "^0.2.3"
+  }
+}
