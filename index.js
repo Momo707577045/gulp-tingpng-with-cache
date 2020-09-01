@@ -109,7 +109,11 @@ function tinypng (file, cb) {
               url: results.output.url,
             })
             .pipe(fs.createWriteStream(filePathName))
-            .on('close', (...params) => {
+            .on('data', function(data) {
+              // decompressed data as it is received
+              console.log('decoded chunk: ' + data)
+            })
+            .on('close', () => {
               fs.readFile(filePathName, function (err, data) {
                 cb(data)
               })
