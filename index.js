@@ -53,7 +53,6 @@ function gulpMain ({ apiKeyList = [], cached = true }) {
       let prevLength = file.contents.length // 压缩前的大小
       // return callback()
       tinypng(file, (data) => {
-        console.log('data  ', data)
         this.push(file)
         file.contents = data
         compressionInfo.num++
@@ -87,7 +86,6 @@ function checkKey (errorMsg, cb) {
 
 // 压缩文件
 function tinypng (file, cb) {
-  console.log(AUTH_TOKEN, file, cb)
   request({
     method: 'POST',
     strictSSL: false,
@@ -111,7 +109,7 @@ function tinypng (file, cb) {
               url: results.output.url,
             })
             .pipe(fs.createWriteStream(filePathName))
-            .on('close', () => {
+            .on('close', (...params) => {
               fs.readFile(filePathName, function (err, data) {
                 cb(data)
               })
