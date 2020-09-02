@@ -22,6 +22,7 @@ gulp.task('default', function () {
     apiKeyList,
     cacheFilePath: __dirname + '/tinyPngCache.json', // 不设置，则不进行缓存过滤
     recordFilePath: __dirname + '/tinyPngRecord.json', // 不设置，则不进行日志记录
+    minCompressPercentLimit: 10, // 默认值为零，最小压缩百分比限制，为保证图片质量，当压缩比例低于该值时，保持源文件，避免过分压缩，损伤图片质量
   }))
   .pipe(gulp.dest('./', { overwrite: true })) // 覆写原文件
 })

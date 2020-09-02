@@ -8,6 +8,7 @@ const PluginError = gutil.PluginError // 错误提示
 const PLUGIN_NAME = 'gulp-tinypng-with-cache' // 插件名
 
 let AUTH_TOKEN = '' // 根据 aypi key 生成的请求头，
+let _minCompressPercentLimit = 0 // 默认值为零，最小压缩百分比限制，为保证图片质量，当压缩比例低于该值时，保持源文件，避免过分压缩，损伤图片质量
 let _cacheFilePath = '' // 缓存信息所在路径
 let _recordFilePath = '' // 日志文件路径
 let _apiKeyList = [] // key 列表
@@ -32,7 +33,7 @@ function recordResult () {
 }
 
 // 主函数
-function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath }) {
+function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath, minCompressPercentLimit = 0 }) {
   if (!apiKeyList.length) {
     throw new PluginError(PLUGIN_NAME, 'tinypny key 列表不能为空!')
   }
@@ -40,6 +41,7 @@ function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath }) {
   _apiKeyList = apiKeyList
   _cacheFilePath = cacheFilePath
   _recordFilePath = recordFilePath
+  _minCompressPercentLimit = minCompressPercentLimit
   AUTH_TOKEN = Buffer.from('api:' + _apiKeyList[keyIndex]).toString('base64')
   gutil.log(`当前使用第一个 apiKey:  ${_apiKeyList[keyIndex]}`)
   try {
@@ -65,14 +67,21 @@ function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath }) {
       // 不命中缓存，进行压缩
       let prevSize = file.contents.length // 压缩前的大小
       tinypng(file, (data) => {
-        file.contents = data
-        compressionInfo.num++
-        compressionInfo.saveSize += prevSize - data.length
-        compressionInfo.originSize += prevSize
-        cacheObj[file.relative] = md5(data) // 记录到缓存中
-        const record = `压缩成功: ${file.relative} 【${prettyBytes(prevSize - data.length)}】【${((1 - data.length / prevSize) * 100).toFixed(0)}%】`
-        recordList.push(record)
-        gutil.log(record)
+        const compressPercent = (1 - data.length / prevSize) * 100// 压缩百分比
+        const compressPercentStr = compressPercent.toFixed(0) + '%' // 压缩百分比
+        if (compressPercent < _minCompressPercentLimit) { // 无效压缩，保存源文件
+          cacheObj[file.relative] = md5(file.contents) // 记录到缓存中
+          gutil.log(`压缩比例低于安全线，保存源文件: ${file.relative} 【${compressPercentStr}】`)
+        } else { // 有效压缩
+          file.contents = data
+          compressionInfo.num++
+          compressionInfo.saveSize += prevSize - data.length
+          compressionInfo.originSize += prevSize
+          cacheObj[file.relative] = md5(data) // 记录到缓存中
+          const record = `压缩成功: ${file.relative} 【${prettyBytes(prevSize - data.length)}】【${compressPercentStr}】`
+          recordList.push(record)
+          gutil.log(record)
+        }
         this.push(file)
         return callback()
       })
