@@ -1,5 +1,5 @@
 const fs = require('fs')
-const md5 = require('md5');
+const md5 = require('md5')
 const gutil = require('gulp-util')
 const request = require('request')
 const through = require('through2')
@@ -9,11 +9,11 @@ const PLUGIN_NAME = 'gulp-tinypng-with-cache' // 插件名
 
 let AUTH_TOKEN = '' // 根据 aypi key 生成的请求头，
 let _minCompressPercentLimit = 0 // 默认值为零，最小压缩百分比限制，为保证图片质量，当压缩比例低于该值时，保持源文件，避免过分压缩，损伤图片质量
-let _cacheFilePath = '' // 缓存信息所在路径
-let _recordFilePath = '' // 日志文件路径
+let _md5RecordFilePath = '' // 压缩后图片 md5 信息文件所在路径
+let _reportFilePath = '' // 报告文件路径
 let _apiKeyList = [] // key 列表
 let recordList = [] // 压缩日志列表
-let cacheObj = {}  // 压缩日志文件，记录每个文件是否被压缩过，且其压缩后的体积是多少。如果比记录值大，则进行压缩
+let md5RecordList = [] // 图片压缩后的 md5 记录数组
 let keyIndex = 0 // 当前使用第几个 Key
 
 let compressionInfo = {
@@ -28,24 +28,24 @@ function recordResult () {
   const record = `共压缩 ${compressionInfo.num} 个文件，节省 ${prettyBytes(compressionInfo.saveSize)} 空间，压缩百分比 ${((compressionInfo.saveSize / (compressionInfo.originSize || 1)) * 100).toFixed(0)}%`
   gutil.log(record)
   recordList.push(record)
-  _cacheFilePath && fs.writeFileSync(_cacheFilePath, JSON.stringify(cacheObj))
-  _recordFilePath && fs.writeFileSync(_recordFilePath, JSON.stringify(recordList))
+  _md5RecordFilePath && fs.writeFileSync(_md5RecordFilePath, JSON.stringify(md5RecordList))
+  _reportFilePath && fs.writeFileSync(_reportFilePath, JSON.stringify(recordList))
 }
 
 // 主函数
-function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath, minCompressPercentLimit = 0 }) {
+function gulpMain ({ apiKeyList = [], md5RecordFilePath, reportFilePath, minCompressPercentLimit = 0 }) {
   if (!apiKeyList.length) {
     throw new PluginError(PLUGIN_NAME, 'tinypny key 列表不能为空!')
   }
 
   _apiKeyList = apiKeyList
-  _cacheFilePath = cacheFilePath
-  _recordFilePath = recordFilePath
+  _md5RecordFilePath = md5RecordFilePath
+  _reportFilePath = reportFilePath
   _minCompressPercentLimit = minCompressPercentLimit
   AUTH_TOKEN = Buffer.from('api:' + _apiKeyList[keyIndex]).toString('base64')
   gutil.log(`当前使用第一个 apiKey:  ${_apiKeyList[keyIndex]}`)
   try {
-    cacheObj = JSON.parse(fs.readFileSync(_cacheFilePath) || '{}')
+    md5RecordList = JSON.parse(fs.readFileSync(_md5RecordFilePath) || '[]')
   } catch (e) {
 
   }
@@ -59,7 +59,7 @@ function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath, minCompress
       return callback()
     } else if (file.isBuffer()) { // 正常处理的类型
       // 目标文件在缓存中存在，且内容未发生变化
-      if (_cacheFilePath && cacheObj[file.relative] === md5(file.contents)) {
+      if (_md5RecordFilePath && md5RecordList.indexOf(md5(file.contents)) > -1) {
         this.push(file)
         return callback()
       }
@@ -70,14 +70,14 @@ function gulpMain ({ apiKeyList = [], cacheFilePath, recordFilePath, minCompress
         const compressPercent = (1 - data.length / prevSize) * 100// 压缩百分比
         const compressPercentStr = compressPercent.toFixed(0) + '%' // 压缩百分比
         if (compressPercent < _minCompressPercentLimit) { // 无效压缩，保存源文件
-          cacheObj[file.relative] = md5(file.contents) // 记录到缓存中
+          md5RecordList.push(md5(file.contents)) // 记录到缓存中
           gutil.log(`压缩比例低于安全线，保存源文件: ${file.relative} 【${compressPercentStr}】`)
         } else { // 有效压缩
           file.contents = data
           compressionInfo.num++
           compressionInfo.saveSize += prevSize - data.length
           compressionInfo.originSize += prevSize
-          cacheObj[file.relative] = md5(data) // 记录到缓存中
+          md5RecordList.push(md5(data)) // 记录到缓存中
           const record = `压缩成功: ${file.relative} 【${prettyBytes(prevSize - data.length)}】【${compressPercentStr}】`
           recordList.push(record)
           gutil.log(record)

@@ -1,7 +1,6 @@
 ### 「过滤重复压缩」
 ### 「替换源文件」
 ### 「静默压缩，不生成冗余文件」
-
 ## 项目特点
 - 【过滤重复压缩】
   - 自动记录已被压缩过的图片，跳过压缩，加快进度。
@@ -23,9 +22,6 @@
   - 推荐阅读源码，打破恐惧，便于定制个性化需求。
 
 
-## [项目地址](https://github.com/Momo707577045/gulp-tingpng-with-cache)
-
-
 ## 参数介绍
 | 参数名 | 值类型 | 是否必填 | 参数作用 | 默认值 | 推荐值 |
 | :------: | :------: | :------: | :------: | :------: | :------: |
@@ -43,17 +39,6 @@
 ## 测试资源
 - test-img：图片压缩测试目录
 - test-img-origin：测试图片备份目录，用于恢复测试
-
-
-## 运行效果
-![运行效果](http://upyun.luckly-mjw.cn/Assets/tinypng/001.png)
-
-## 压缩报告
-![压缩报告](http://upyun.luckly-mjw.cn/Assets/tinypng/002.png)
-
-## md5 记录
-![md5 记录](http://upyun.luckly-mjw.cn/Assets/tinypng/003.png)
-
 
 ## 特别感谢
 - 感谢 Gaurav Jassal，本项目改编自他的 [gulp-tinypng](https://github.com/creativeaura/gulp-tinypng)
