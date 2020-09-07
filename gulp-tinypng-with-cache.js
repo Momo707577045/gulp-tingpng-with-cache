@@ -8,6 +8,7 @@ const PluginError = gutil.PluginError // 错误提示
 const PLUGIN_NAME = 'gulp-tinypng-with-cache' // 插件名
 
 let AUTH_TOKEN = '' // 根据 aypi key 生成的请求头，
+let _createMd5FormOrigin = false // 不进行压缩操作，只生成现有图片的 md5 信息，并作为缓存。只会在接入本项目时用一次。
 let _minCompressPercentLimit = 0 // 默认值为零，最小压缩百分比限制，为保证图片质量，当压缩比例低于该值时，保持源文件，避免过分压缩，损伤图片质量
 let _md5RecordFilePath = '' // 压缩后图片 md5 信息文件所在路径
 let _reportFilePath = '' // 报告文件路径
@@ -25,7 +26,7 @@ let compressionInfo = {
 
 // 记录压缩结果
 function recordResult () {
-  const record = `共压缩 ${compressionInfo.num} 个文件，节省 ${prettyBytes(compressionInfo.saveSize)} 空间，压缩百分比 ${((compressionInfo.saveSize / (compressionInfo.originSize || 1)) * 100).toFixed(0)}%`
+  const record = `共压缩 ${compressionInfo.num} 个文件，压缩前 ${prettyBytes(compressionInfo.originSize)}，压缩后 ${prettyBytes(compressionInfo.originSize - compressionInfo.saveSize)}，节省 ${prettyBytes(compressionInfo.saveSize)} 空间，压缩百分比 ${((compressionInfo.saveSize / (compressionInfo.originSize || 1)) * 100).toFixed(0)}%`
   gutil.log(record)
   recordList.push(record)
   _md5RecordFilePath && fs.writeFileSync(_md5RecordFilePath, JSON.stringify(md5RecordList))
@@ -33,7 +34,7 @@ function recordResult () {
 }
 
 // 主函数
-function gulpMain ({ apiKeyList = [], md5RecordFilePath, reportFilePath, minCompressPercentLimit = 0 }) {
+function gulpMain ({ apiKeyList = [], md5RecordFilePath, reportFilePath, minCompressPercentLimit = 0, createMd5FormOrigin = false }) {
   if (!apiKeyList.length) {
     throw new PluginError(PLUGIN_NAME, 'tinypny key 列表不能为空!')
   }
@@ -42,6 +43,7 @@ function gulpMain ({ apiKeyList = [], md5RecordFilePath, reportFilePath, minComp
   _md5RecordFilePath = md5RecordFilePath
   _reportFilePath = reportFilePath
   _minCompressPercentLimit = minCompressPercentLimit
+  _createMd5FormOrigin = createMd5FormOrigin
   AUTH_TOKEN = Buffer.from('api:' + _apiKeyList[keyIndex]).toString('base64')
   gutil.log(`当前使用第一个 apiKey:  ${_apiKeyList[keyIndex]}`)
   try {
@@ -58,6 +60,13 @@ function gulpMain ({ apiKeyList = [], md5RecordFilePath, reportFilePath, minComp
       this.push(file)
       return callback()
     } else if (file.isBuffer()) { // 正常处理的类型
+
+      if (_createMd5FormOrigin) { // 不进行压缩操作，只生成现有图片的 md5 信息，并作为缓存。只会在接入本项目时用一次。
+        md5RecordList.push(md5(file.contents)) // 记录到缓存中
+        this.push(file)
+        return callback()
+      }
+
       // 目标文件在缓存中存在，且内容未发生变化
       if (_md5RecordFilePath && md5RecordList.indexOf(md5(file.contents)) > -1) {
         this.push(file)
@@ -78,11 +87,16 @@ function gulpMain ({ apiKeyList = [], md5RecordFilePath, reportFilePath, minComp
           compressionInfo.saveSize += prevSize - data.length
           compressionInfo.originSize += prevSize
           md5RecordList.push(md5(data)) // 记录到缓存中
-          const record = `压缩成功: ${file.relative} 【${prettyBytes(prevSize - data.length)}】【${compressPercentStr}】`
+          let record = '压缩成功  '
+          record += `前: ${prettyBytes(prevSize)}`.padEnd(15)
+          record += `后: ${prettyBytes(data.length)}`.padEnd(15)
+          record += `压缩: ${prettyBytes(prevSize - data.length)}`.padEnd(18)
+          record += `${file.relative} `
           recordList.push(record)
           gutil.log(record)
         }
         this.push(file)
+        _md5RecordFilePath && fs.writeFileSync(_md5RecordFilePath, JSON.stringify(md5RecordList)) // 每个文件压缩后，都保留一次 md5 信息。防止中途中断进程，浪费已压缩的记录。
         return callback()
       })
     }
