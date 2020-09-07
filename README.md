@@ -33,6 +33,7 @@
 | reportFilePath | Number | 非必填 | 压缩报告文件路径，记录图片的压缩比例，生产压缩报告 | 无 | __dirname + '/tinyPngReport.json' |
 | md5RecordFilePath | Number | 非必填 | 压缩后图片 md5 记录文件，如果待压缩图片的 md5 值存在于该文件，则跳过压缩，解决「重复压缩」问题 | 无 | __dirname + '/md5RecordFilePath.json' |
 | minCompressPercentLimit | Number | 非必填 | 压缩安全线，当压缩比例低于该百分比时，保持源文件，避免图片过分压缩，损伤显示质量 | 0 | 10 |
+| createMd5FormOrigin | Boolean | 非必填 | 不进行压缩操作，只生成现有图片的 md5 信息，并作为缓存。用于「初次项目接入」及手动清理冗余的「图片md5信息」 | false | false |
 
 
 ## 参数配置示例
