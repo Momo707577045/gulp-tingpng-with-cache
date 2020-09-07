@@ -1,35 +1,39 @@
 {
   "name": "gulp-tinypng-with-cache",
+	"author": "Momo707577045",
+	"license": "ISC",
   "version": "1.0.0",
-  "description": "带缓存的 tinypng gulp 插件",
-  "main": "index.js",
-  "files": [
-    "index.js"
-  ],
-  "keywords": [
-    "gulpplugin",
-    "tinypng",
-    "image",
-    "img",
-    "picture",
-    "minify",
-    "minifier",
-    "compress",
-    "png"
-  ],
-  "engines": {
-    "node": ">=0.10.0"
-  },
-  "license": "MIT",
+	"description": "带缓存的 tinypng gulp 插件",
+  "main": "gulp-tinypng-with-cache.js",
+	"files": [
+		"gulp-tinypng-with-cache.js"
+	],
+	"keywords": [
+		"gulpplugin",
+		"tinypng",
+		"image",
+		"minify",
+		"minifier",
+		"compress",
+		"cache",
+		"filter"
+	],
   "dependencies": {
-    "event-stream": "~3.1.0",
-    "gulp": "^4.0.2",
-    "gulp-count": "^1.0.0",
-    "gulp-util": "^2.2.20",
-    "md5": "^2.1.0",
-    "pretty-bytes": "^0.1.2",
-    "request": "^2.31.0",
-    "through2": "^0.4.2",
-    "vinyl": "^0.2.3"
-  }
+		"event-stream": "~3.1.0",
+		"gulp": "^4.0.2",
+		"gulp-util": "^2.2.20",
+		"md5": "^2.1.0",
+		"pretty-bytes": "^0.1.2",
+		"request": "^2.31.0",
+		"through2": "^0.4.2",
+		"vinyl": "^0.2.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Momo707577045/gulp-tingpng-with-cache.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Momo707577045/gulp-tingpng-with-cache/issues"
+  },
+  "homepage": "https://github.com/Momo707577045/gulp-tingpng-with-cache#readme"
 }
