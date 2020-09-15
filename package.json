@@ -2,12 +2,9 @@
 	"name": "gulp-tinypng-with-cache",
 	"author": "Momo707577045",
 	"license": "ISC",
-	"version": "1.0.1",
+	"version": "1.0.3",
 	"description": "带缓存的 tinypng gulp 插件",
 	"main": "gulp-tinypng-with-cache.js",
-	"files": [
-		"gulp-tinypng-with-cache.js"
-	],
 	"keywords": [
 		"gulpplugin",
 		"tinypng",
