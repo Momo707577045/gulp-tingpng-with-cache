@@ -16,6 +16,10 @@
   - 可设置多个 api key，当某 key 超过使用次数时，自动切换下一个 key 进行压缩。
 - 【压缩报告】
   - 记录每个图片的压缩数据，并生成汇总信息。
+- 【配置筛选后缀】
+  - 只有对应后缀的文件会进行处理
+- 【配置记录源文件MD5】
+  - 可配置对源文件MD5，进行记录，再次运行压缩脚本时，跳过压缩。
 - 【压缩安全边界】
   - 压缩安全线，当压缩比例低于该百分比值时，保持源文件，避免过分压缩，损伤图片质量。
 - 【源码携带详细备注，自带测试图片】
@@ -27,13 +31,15 @@
 
 
 ## 参数介绍
-| 参数名 | 值类型 | 是否必填 | 参数作用 | 默认值 | 推荐值 |
-| :------: | :------: | :------: | :------: | :------: | :------: |
-| apiKeyList | Array | 必填 | tiny png 的 api key 数组，当其中一个不可用或超过使用次数时，自动切换下一个 key 调用 | 无 | 无 |
-| reportFilePath | Number | 非必填 | 压缩报告文件路径，记录图片的压缩比例，生产压缩报告 | 无 | __dirname + '/tinyPngReport.json' |
-| md5RecordFilePath | Number | 非必填 | 压缩后图片 md5 记录文件，如果待压缩图片的 md5 值存在于该文件，则跳过压缩，解决「重复压缩」问题 | 无 | __dirname + '/md5RecordFilePath.json' |
-| minCompressPercentLimit | Number | 非必填 | 压缩安全线，当压缩比例低于该百分比时，保持源文件，避免图片过分压缩，损伤显示质量 | 0 | 10 |
-| createMd5FormOrigin | Boolean | 非必填 | 不进行压缩操作，只生成现有图片的 md5 信息，并作为缓存。用于「初次项目接入」及手动清理冗余的「图片md5信息」 | false | false |
+|         参数名          | 值类型  | 是否必填 |                                                  参数作用                                                  |                                                                              默认值                                                                               |                推荐值                 |
+| :---------------------: | :-----: | :------: | :--------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------: |
+|       apiKeyList        |  Array  |   必填   |            tiny png 的 api key 数组，当其中一个不可用或超过使用次数时，自动切换下一个 key 调用             |                                                                                无                                                                                 |                  无                   |
+|     reportFilePath      | Number  |  非必填  |                             压缩报告文件路径，记录图片的压缩比例，生产压缩报告                             |                                                                                无                                                                                 |   __dirname + '/tinyPngReport.json'   |
+|    md5RecordFilePath    | Number  |  非必填  |       压缩后图片 md5 记录文件，如果待压缩图片的 md5 值存在于该文件，则跳过压缩，解决「重复压缩」问题       |                                                                                无                                                                                 | __dirname + '/md5RecordFilePath.json' |
+| minCompressPercentLimit | Number  |  非必填  |              压缩安全线，当压缩比例低于该百分比时，保持源文件，避免图片过分压缩，损伤显示质量              |                                                                                 0                                                                                 |                  10                   |
+|   createMd5FormOrigin   | Boolean |  非必填  | 不进行压缩操作，只生成现有图片的 md5 信息，并作为缓存。用于「初次项目接入」及手动清理冗余的「图片md5信息」 |                                                                               false                                                                               |                 false                 |
+|       includeExt        |  Array  |  非必填  |                                            需要压缩的文件后缀名                                            | ['.bmp', '.jpg', '.png', '.tif', '.gif', '.pcx', '.tga', '.exif', '.fpx', '.svg', '.psd', '.cdr', '.pcd', '.dxf', '.ufo', '.eps', '.ai', '.raw', '.wmf', '.jpeg'] |               按需使用                |
+|     recordSourceMd5     | Boolean |  非必填  |                                     记录源文件的 md5 信息，作为筛选项                                      |                                                                               false                                                                               |               按需使用                |
 
 
 ## 参数配置示例
@@ -48,6 +54,7 @@ const apiKeyList = [
   'IAl6s3ekmONUVMEqWZdIp1nV2ItJLyPC', // 有效 key
 ]
 
+/**直接覆写原文件 */
 gulp.task('default', function () {
   return gulp.src([
     projectPath + '/**/*.png',
@@ -66,6 +73,27 @@ gulp.task('default', function () {
     createMd5FormOrigin: false, // 不进行压缩操作，只生成现有图片的 md5 信息，并作为缓存。用于「初次项目接入」及手动清理冗余的「图片md5信息」
   }))
   .pipe(gulp.dest('./', { overwrite: true })) // 覆写原文件
+})
+
+/**原文件 与 压缩后文件 分别在不同文件夹 */
+gulp.task('diffDir', function () {
+  return gulp.src([
+    projectPath + '/**/*.png',
+    projectPath + '/**/*.jpg',
+    projectPath + '/**/*.jpeg',
+    '!/**/node_modules/*', // 忽略无需遍历的文件，路径匹配语法参考：https://www.gulpjs.com.cn/docs/getting-started/explaining-globs/
+  ], {
+    nodir: true, // 忽略文件夹
+  })
+  .pipe(tinypng({
+    apiKeyList,
+    reportFilePath: __dirname + '/tinypngReport_diffDir.json', // 不设置，则不进行日志记录
+    md5RecordFilePath: __dirname + '/tinypngMd5Record_diffDir.json', // 不设置，则不进行缓存过滤
+    recordSourceMd5: true, // 记录源文件的 md5 信息，用于缓存过滤
+    minCompressPercentLimit: 10, // 默认值为零，最小压缩百分比限制，为保证图片质量，当压缩比例低于该值时，保持源文件，避免过分压缩，损伤图片质量
+    createMd5FormOrigin: false, // 不进行压缩操作，只生成现有图片的 md5 信息，并作为缓存。用于「初次项目接入」及手动清理冗余的「图片md5信息」
+  }))
+  .pipe(gulp.dest('./dest', { overwrite: true })) // 覆写原文件
 })
 ```
 
