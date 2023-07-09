@@ -1,9 +1,9 @@
 {
-	"name": "gulp-tinypng-with-cache",
-	"author": "Momo707577045",
+	"name": "gulp-tinypng-with-cache-rdd-mod",
+	"author": "bakabird",
 	"license": "ISC",
-	"version": "1.0.3",
-	"description": "带缓存的 tinypng gulp 插件",
+	"version": "1.0.4",
+	"description": "[rdd-mod]带缓存的 tinypng gulp 插件",
 	"main": "gulp-tinypng-with-cache.js",
 	"keywords": [
 		"gulpplugin",
@@ -27,10 +27,10 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/Momo707577045/gulp-tingpng-with-cache.git"
+		"url": "git+https://github.com/bakabird/gulp-tingpng-with-cache.git"
 	},
 	"bugs": {
-		"url": "https://github.com/Momo707577045/gulp-tingpng-with-cache/issues"
+		"url": "https://github.com/bakabird/gulp-tingpng-with-cache/issues"
 	},
-	"homepage": "https://github.com/Momo707577045/gulp-tingpng-with-cache#readme"
+	"homepage": "https://github.com/bakabird/gulp-tingpng-with-cache#readme"
 }
